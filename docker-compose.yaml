@@ -1,0 +1,72 @@
+version: '3.8'
+
+services: 
+  
+  rotten_potatoes_ms_service:
+    image: rotten_potatoes_ms_service:1.0
+    hostname: rotten_potatoes_ms_service
+    build: 
+      context: ./rotten-potatoes-ms/src
+      dockerfile: Dockerfile
+    environment: 
+      - MOVIE_SERVICE_URI=${MOVIE_SERVICE_URI}
+      - REVIEW_SERVICE_URI=${REVIEW_SERVICE_URI}
+    networks: 
+      - net_desafio
+    ports: 
+      - 8080:5000
+    depends_on: 
+      - movie_service
+      - review_service
+
+  movie_service:
+    image: movie_service:1.0
+    hostname: movie_service
+    build: 
+      context: ./movie/src/
+      dockerfile: Dockerfile
+    environment: 
+      - MONGODB_URI=${MONGODB_URI}
+    networks: 
+      - net_desafio
+      - net_int
+    depends_on: 
+      - mongo_db_service
+    restart: always
+
+  review_service:
+    image: review_service:1.0
+    hostname: review_service
+    build: 
+      context: ./review/src/Review.Web
+      dockerfile: Dockerfile
+    environment: 
+      - ConnectionStrings__MyConnection=${ConnectionStrings__MyConnection}
+    networks: 
+      - net_desafio
+      - net_int
+    depends_on: 
+      - pg_db_service
+    restart: always
+
+  pg_db_service:
+    image: postgres:13.4-alpine
+    environment: 
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks: 
+      - net_int
+
+  mongo_db_service:
+    image: mongo:5.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    networks: 
+      - net_int
+
+networks: 
+  net_desafio:
+    driver: bridge
+  net_int:
+    driver: bridge
