@@ -1,72 +1,86 @@
-version: '3.9'
+version: "3.9"
 
-services: 
-  
-  rotten_potatoes_ms_svc:
-    image: rotten_potatoes_ms:${TAG}
-    hostname: rotten_potatoes_ms_svc
-    build: 
-      context: ./rotten-potatoes-ms/src
-      dockerfile: Dockerfile
-    environment: 
-      - MOVIE_SERVICE_URI=http://movie_service:8181
-      - REVIEW_SERVICE_URI=http://review_service:80
-    networks: 
-      - net_svc
-    ports: 
-      - 8080:5000
-    depends_on: 
-      - movie_service
-      - review_service
-
-  movie_service:
-    image: movie:${TAG}
-    hostname: movie_service
-    build: 
-      context: ./movie/src/
-      dockerfile: Dockerfile
-    environment: 
-      - MONGODB_URI=mongodb://mongouser:mongopwd@mongo_db_service:27017/admin
-    networks: 
-      - net_svc
-      - net_int
-    depends_on: 
-      - mongo_db_service
-    restart: always
-
-  review_service:
-    image: review:${TAG}
-    hostname: review_service
-    build: 
-      context: ./review/src/Review.Web
-      dockerfile: Dockerfile
-    environment: 
-      - ConnectionStrings__MyConnection=Host=pg_db_service;Database=pguser;Username=pguser;Password=Pg@123;
-    networks: 
-      - net_svc
-      - net_int
-    depends_on: 
-      - pg_db_service
-    restart: always
-
-  pg_db_service:
+services:
+  postgres:
+    #image: postgres:14.0
     image: postgres:13.4-alpine
-    environment: 
-      - POSTGRES_USER=pguser
-      - POSTGRES_PASSWORD=Pg@123
-    networks: 
+    environment:
+      POSTGRES_USER: ${pg_user}
+      POSTGRES_PASSWORD: ${pg_passwd}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
       - net_int
+    ports:
+      - "5432:5432"
 
-  mongo_db_service:
+  mongodb:
+    #image: mongo:4.4.3
     image: mongo:5.0
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=mongouser
-      - MONGO_INITDB_ROOT_PASSWORD=mongopwd
-    networks: 
-      - net_int
+      MONGO_INITDB_ROOT_USERNAME: ${mongouser}
+      MONGO_INITDB_ROOT_PASSWORD: ${mongopwd}
+    volumes:
+      - mongo_vol:/data/db
+    networks:
+        - net_int
+    ports:
+      - "27017:27017"
 
-networks: 
-  net_svc:
+  app-rotten-potatoes:
+    image: rotten_potatoes_ms:${TAG}
+    hostname: app-rotten-potatoes
+    build:
+      context: ./rotten-potatoes-ms/src
+      dockerfile: Dockerfile
+    environment:
+      - MOVIE_SERVICE_URI=${MOVIE_SERVICE_URI}
+      - REVIEW_SERVICE_URI=${REVIEW_SERVICE_URI}
+    depends_on:
+      - app-review
+      - app-movie
+    networks:
+      - net_app
+    ports:
+      - "8080:5000"
+  
+  app-review:
+    image: review:${TAG}
+    hostname: app-review
+    build:
+      context: ./review/src/
+      dockerfile: Dockerfile
+    environment:
+      - ConnectionStrings__MyConnection=${connection_string_pg}
+    networks:
+      - net_int
+      - net_app
+    restart: always
+    depends_on:
+      - postgres
+
+  app-movie:
+    image: movie:${TAG}
+    hostname: app-movie
+    build:
+      context: ./movie/src
+      dockerfile: Dockerfile
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    networks:
+      - net_int
+      - net_app
+    restart: always
+    depends_on:
+      - mongodb
+      
+
+volumes:
+  postgres_data:
+  mongo_vol:
+
+networks:
+  net_app:
     driver: bridge
   net_int:
     driver: bridge
