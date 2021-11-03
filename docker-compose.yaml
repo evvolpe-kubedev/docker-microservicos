@@ -48,7 +48,7 @@ services:
     image: review:${TAG}
     hostname: app-review
     build:
-      context: ./review/src/
+      context: ./review/src/Review.Web/
       dockerfile: Dockerfile
     environment:
       - ConnectionStrings__MyConnection=${connection_string_pg}
@@ -63,7 +63,7 @@ services:
     image: movie:${TAG}
     hostname: app-movie
     build:
-      context: ./movie/src
+      context: ./movie/src/
       dockerfile: Dockerfile
     environment:
       - MONGODB_URI=${MONGODB_URI}
